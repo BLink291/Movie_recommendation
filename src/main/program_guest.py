@@ -1,9 +1,7 @@
-import datetime
-from colorama import Fore
 from src.account import account as acc
 from src.data import service
-
 from src.lib.switchlang import switch
+from src.lib.driver import *
 
 
 def run():
@@ -15,9 +13,8 @@ def run():
         action = get_option()
 
         with switch(action) as s:
-            s.case('c', create_account)
-            s.case('l', log_into_account)
-
+            s.case('c', acc.create_account)
+            s.case('l', acc.log_into_account)
             s.case('w', recommend)
             s.case('r', rate_movie)
             s.case('y', my_movies)
@@ -33,7 +30,7 @@ def run():
             print()
 
         if s.result == 'change_mode':
-            log_out()
+            acc.log_out()
             return
 
 
@@ -41,45 +38,12 @@ def show_options():
     print('What action would you like to take:')
     print('[C]reate an account')
     print('[L]ogin to your account')
-    print('[W]atch a movie')
+    print('[W]atch a new movie')
     print('[R]eview a movie')
     print('View [y]our watched movies')
     print('[M]ain menu')
     print('e[X]it app')
     print()
-
-
-def create_account():
-    print(' ****************** REGISTER **************** ')
-
-    name = input('What is your name? ')
-    email = input('What is your email? ').strip().lower()
-
-    old_account = acc.find_account_by_email(email)
-    if old_account:
-        error_msg(f"ERROR: Account with email {email} already exists.")
-        return
-
-    acc.active_account = acc.create_account(name, email)
-    success_msg(f"Created new account with id {acc.active_account.id}.")
-
-
-def log_into_account():
-    print(' ****************** LOGIN **************** ')
-
-    email = input('What is your email? ').strip().lower()
-    account = acc.find_account_by_email(email)
-
-    if not account:
-        error_msg(f'Could not find account with email {email}.')
-        return
-
-    acc.active_account = account
-    success_msg('Logged in successfully.')
-
-
-def log_out():
-    acc.active_account = None
 
 
 def recommend():
@@ -97,14 +61,14 @@ def rate_movie():
         error_msg("Please enter correct movie ID")
         return
     movie = service.get_movie_with_id(movie_id)
-    if not movie.movie_id:
+    if not movie:
         error_msg("Please enter correct movie ID")
         return
 
     rating = float(input('How much would you rate this movie  (between 0 to 5)? '))
     service.review_movie(acc.active_account, movie_id, rating)
     acc.reload_account()
-    success_msg('Thanks for rating  {}'.format(movie.movie_id))
+    success_msg('Thanks for rating  {}'.format(movie.name))
 
 
 def my_movies():
@@ -114,8 +78,9 @@ def my_movies():
         return
     movies = service.get_movies_for_user(acc.active_account.user_id)
     print("You have watched {} movies.".format(len(movies)))
+    print(" Movie ID          : Movie name              ")
     for mov in movies:
-        print(" * {} :  {} ".format(mov.movie_id, mov.name))
+        print(" {}        :  {} ".format(mov.movie_id, mov.name))
 
 
 def get_option():
@@ -125,21 +90,3 @@ def get_option():
 
     action = input(Fore.YELLOW + text + Fore.WHITE)
     return action.strip().lower()
-
-
-def unknown_command():
-    print("Sorry i didn't understand that command.")
-
-
-def success_msg(text):
-    print(Fore.LIGHTGREEN_EX + text + Fore.WHITE)
-
-
-def error_msg(text):
-    print(Fore.LIGHTRED_EX + text + Fore.WHITE)
-
-
-def exit_app():
-    print()
-    print('bye')
-    raise KeyboardInterrupt()
