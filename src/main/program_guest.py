@@ -48,6 +48,11 @@ def show_options():
 
 def recommend():
     print(' ************   Recommended movies for you **************** ')
+    if not acc.active_account:
+        error_msg("You must log in first to review a movie")
+        return
+    if not service.find_ratings_given_by_user(acc.active_account.id):
+        print('Top Trending movies')
 
 
 def rate_movie():
@@ -66,21 +71,17 @@ def rate_movie():
         return
 
     rating = float(input('How much would you rate this movie  (between 0 to 5)? '))
-    service.review_movie(acc.active_account, movie_id, rating)
-    acc.reload_account()
+    service.review_movie(acc.active_account.id, movie_id, rating)
     success_msg('Thanks for rating  {}'.format(movie.name))
 
 
 def my_movies():
     print(' ************   You have watched these movies  **************** ')
     if not acc.active_account:
-        error_msg("You must log in first to review a movie")
+        error_msg("You must log in first.")
         return
-    movies = service.get_movies_for_user(acc.active_account.user_id)
-    print("You have watched {} movies.".format(len(movies)))
-    print(" Movie ID          : Movie name              ")
-    for mov in movies:
-        print(" {}        :  {} ".format(mov.movie_id, mov.name))
+    service.watched_movies_by_user(acc.active_account.id)
+    return
 
 
 def get_option():

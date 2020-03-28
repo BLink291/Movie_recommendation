@@ -3,11 +3,13 @@ import mongoengine
 
 
 class User(mongoengine.Document):
-    user_id = mongoengine.IntField(unique=True)
-    name = mongoengine.StringField(required=True)
-    email = mongoengine.EmailField(required=True)
+    id = mongoengine.IntField(primary_key= True)
+    name = mongoengine.StringField(required=False)
+    email = mongoengine.EmailField(required=False)
+    pswd = mongoengine.StringField(required=False)
     registered_date = mongoengine.DateTimeField(default=datetime.datetime.now)
 
+    admin = mongoengine.BooleanField(default=False)
     age = mongoengine.IntField(required=False)
     gender = mongoengine.StringField(required=False)
     country = mongoengine.StringField(required=False)
@@ -22,12 +24,12 @@ class User(mongoengine.Document):
 
 
 class Movie(mongoengine.Document):
-    movie_id = mongoengine.IntField(unique=True)
+    id = mongoengine.IntField(primary_key=True)
     name = mongoengine.StringField(required=True)
     release_date = mongoengine.DateTimeField(default=datetime.datetime.now)
 
-    vote_count = mongoengine.IntField(required=False)
-    vote_avg = mongoengine.FloatField(required=False)
+    vote_count = mongoengine.IntField(default=0)
+    vote_avg = mongoengine.FloatField(default=0)
     genres = mongoengine.ListField(mongoengine.StringField(max_length=50), required=False)
     casts = mongoengine.ListField(mongoengine.StringField(max_length=50), required=False)
     spoken_languages = mongoengine.ListField(mongoengine.StringField(max_length=50), required=False)
@@ -41,8 +43,8 @@ class Movie(mongoengine.Document):
 
 
 class Ratings(mongoengine.Document):
-    movie_id = mongoengine.ReferenceField(Movie, reverse_delete_rule=1)
-    user_id = mongoengine.ReferenceField(User)
+    movie_id = mongoengine.IntField(required=True)
+    user_id = mongoengine.IntField(required=True)
     rating = mongoengine.FloatField(required=True)
     timestamp = mongoengine.DateTimeField(default=datetime.datetime.now)
 

@@ -12,12 +12,12 @@ def find_user_type():
     print(Fore.WHITE + '****************  Movie Recommendation System  ***********')
     print(Fore.WHITE + '***********************************************************')
     print("A :  Admin Account")
-    print("U :  Guest Account")
+    print("G :  Guest Account")
     print()
-    choice = input("Are you a [a]dmin or [u]ser? ")
-    if choice == 'u' or choice == 'U':
-        return 'guest'
-    return 'admin'
+    choice = input("Are you a [a]dmin or [g]uest? ")
+    if choice == 'a' or choice == 'A':
+        return 'admin'
+    return 'guest'
 
 
 def main():
