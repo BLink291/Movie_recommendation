@@ -1,8 +1,9 @@
 from src.account.account import User, find_account_by_user_id
-from src.data.model import Movie, Ratings
+from src.data.models import Movies, Ratings
 from mongoengine import fields
 import pandas as pd
 import numpy as np
+from ast import literal_eval
 
 
 def update_document(document, data_dict):
@@ -31,51 +32,53 @@ def update_document(document, data_dict):
     return document
 
 
-def get_movie_with_id(movie_id) -> Movie:
-    movie = Movie.objects(id=movie_id).first()
+def get_movie_with_id(movie_id) -> Movies:
+    movie = Movies.objects(id=movie_id).first()
     return movie
 
-
-def weighted_rating(x, m, c):
-    v = x['vote_count']
-    R = x['avg_vote']
-    # Calculation based on the IMDB formula
-    return (v/(v+m) * R) + (m/(m+v) * c)
-
-
-def trending_movies(genres=None):
-    movies = Movie.objects.all()
-    list = []
-    id_list = []
-    genres_list = []
-
-    df2 = pd.DataFrame(list, columns=['movie_id', 'genres'])
+def top_movies(genres):
+    movies = Movies.objects.all()
+    li = []
     for mov in movies:
-        list.append([mov.id, mov.name, mov.vote_avg, mov.vote_count])
-        id_list.append(mov.id)
-        genres_list.append(mov.genres)
-    df = pd.DataFrame(list, columns=['movie_id', 'name', 'avg_vote', 'vote_count'])
-    df2 = pd.DataFrame({'movie_id': id_list, 'genres': genres_list})
-    df = df[df.vote_count > 2]
-    c = df['avg_vote'].mean()
-    m = df['vote_count'].quantile(0.85)
+        li.append([mov.id, mov.name, mov.genres, mov.vote_average, mov.vote_count, mov.cast, mov.crew, mov.director, mov.keywords])
+    df = pd.DataFrame(li, columns=['id', 'name', 'genres', 'vote_average', 'vote_count', 'cast', 'crew', 'director', 'keywords'])
+
+    df['vote_count'] = df['vote_count'].astype('int')
+    df['vote_average'] = df['vote_average'].astype('int')
+    df = df[df['vote_average'] != 0]
+
+    c = df['vote_average'].mean()
+    m = df['vote_count'].quantile(0.95)
     print(" c = {} and m = {}".format(c, m))
+
+    # qualified = md[(md['vote_count'] >= m) & (md['vote_count'].notnull()) & (md['vote_average'].notnull())][
+    #     ['title', 'year', 'vote_count', 'vote_average', 'popularity', 'genres']]
+    # qualified['vote_count'] = qualified['vote_count'].astype('int')
+    # qualified['vote_average'] = qualified['vote_average'].astype('int')
+    # print(qualified.shape)
+
+    def weighted_rating(x):
+        v = x['vote_count']
+        R = x['vote_average']
+        return (v / (v + m) * R) + (m / (m + v) * c)
+
     q_movies = df.copy().loc[df['vote_count'] >= m]
     print(q_movies.shape)
-    q_movies['score'] = q_movies.apply(weighted_rating, args=(c, m), axis=1)
+    q_movies['score'] = q_movies.apply(weighted_rating, axis=1)
     q_movies = q_movies.sort_values('score', ascending=False)
-    print(q_movies[['name', 'vote_count', 'avg_vote', 'score']].head(20))
+    print(q_movies[['id', 'name', 'vote_count']].head(10))
 
 
 def display_all_movies():
-    movies = Movie.objects.all()
-    print("  {0:6}          {1:50}   {2:3}  {3:60}".format("Movie ID", "Movie Name", "avg vote", "Genres"))
+    movies = Movies.objects.all()
+    print("  {0:6}          {1:50}   {2:10}    {3:10}      {4:10}".format("Movie ID", "Movie Name", "avg vote", "release_date", "vote count"))
     i = 0
     for mov in movies:
         i = i+1
-        if i is 100:
-            i = 193781
-        print("  {0:6d}        {1:50} {2:3}  {3}".format(mov.id, mov.name, mov.vote_avg, mov.genres))
+        print("  {0:6d}        {1:50} {2:10}     {3:10}   {4:10}".format(mov.id, mov.name, mov.vote_average, mov.release_date, mov.vote_count))
+        if i is 20:
+            break
+    return
 
 
 def find_ratings_given_by_user(user_id):
@@ -89,8 +92,10 @@ def watched_movies_by_user(user_id):
     print(" {0:6}          {1:45}   {2:3}     {3:60}".format("Movie ID", "Movie Name", "Rating given", "Genres"))
     for vote in ratings:
         movie = get_movie_with_id(vote.movie_id)
-        print("  {0:6d}        {1:45}        {2:3}         {3}".format(movie.id, movie.name, vote.rating, movie.genres))
-
+        if movie:
+            print("  {0:6d}        {1:45}        {2:3}         {3}".format(movie.id, movie.name, vote.rating, movie.genres))
+        else:
+            print("movie with {} not available".format(vote.movie_id))
     return
 
 
@@ -103,7 +108,7 @@ def review_movie(user_id, movie_id, given_rating, timestamp=None):
     rating.user_id = user_id
     rating.rating = given_rating
     movie = get_movie_with_id(movie_id)
-    movie.vote_avg = ((movie.vote_avg * movie.vote_count) + given_rating) / (movie.vote_count + 1)
+    movie.vote_average = ((movie.vote_average * movie.vote_count) + given_rating) / (movie.vote_count + 1)
     movie.vote_count = movie.vote_count + 1
 
     movie.save()
@@ -114,16 +119,94 @@ def review_movie(user_id, movie_id, given_rating, timestamp=None):
 
 
 def add_movie(name):
-    movie = Movie(name=name)
-    movie.id = Movie.objects.count() + 1
+    movie = Movies(name=name)
+    movie.id = Movies.objects.count() + 1
     movie.save()
     return movie
+
+
+def data_clean(movies, credits, keywords, links):
+    print("Cleaning data ............... ")
+    md = movies
+    md = md.drop(['belongs_to_collection', 'budget', 'homepage', 'imdb_id', 'original_language',
+                  'original_title', 'poster_path', 'production_companies', 'production_countries',
+                  'revenue', 'runtime', 'status', 'tagline', 'video', 'popularity'],
+                 axis=1)
+    md = md.drop([19730, 29503, 35587])
+
+    md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
+        lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
+
+    md['spoken_languages'] = md['spoken_languages'].fillna('[]').apply(literal_eval).apply(
+        lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
+
+    md['release_year'] = pd.to_datetime(md['release_date'], errors='coerce').apply(
+        lambda x: str(x).split('-')[0] if x != np.nan else np.nan)
+
+    md['id'] = md['id'].astype('int')
+    keywords['id'] = keywords['id'].astype('int')
+    credits['id'] = credits['id'].astype('int')
+    md = md.merge(credits, on='id')
+    md = md.merge(keywords, on='id')
+    md['keywords'] = md['keywords'].apply(literal_eval)
+
+    def get_keywords(x):  # x is list of dictionary
+        li = []
+        for i in x:
+            li.append(i['name'])
+        return li
+    md['keywords'] = md['keywords'].apply(get_keywords)
+
+    md['crew'] = md['crew'].apply(literal_eval)
+
+    def get_director(x):  # x is list of dictionary
+        for i in x:
+            if i['job'] == 'Director':
+                return i['name']
+        return np.nan
+
+    md['director'] = md['crew'].apply(get_director)
+
+    def get_crew(x):  # x is list of dictionary
+        li = []
+        for i in x:
+            li.append(i['name'])
+        return li
+
+    md['crew'] = md['crew'].apply(get_crew)
+
+    md['cast'] = md['cast'].apply(literal_eval)
+
+    def get_cast(x):  # x is list of dictionary
+        li = []
+        for i in x:
+            li.append(i['name'])
+        return li
+
+    md['cast'] = md['cast'].apply(get_cast)
+
+    links['tmdbId'] = links['tmdbId'].fillna('0').astype('int')
+    links.drop_duplicates(subset="tmdbId", inplace=True)
+    links = links.rename(columns={"tmdbId": "id"})
+    md = md.merge(links, on='id')
+    md = md.drop(['id', 'imdbId'], axis=1)
+    md['overview'] = md['overview'].fillna('').astype('string', errors='raise')
+    md['release_date'] = md['release_date'].fillna('').astype('string', errors='raise')
+    md['title'] = md['title'].fillna('').astype('string', errors='raise')
+    md['vote_average'] = md['vote_average'].fillna(0.0).astype('float', errors='raise')
+    md['vote_count'] = md['vote_count'].fillna(0).astype('int', errors='raise')
+    md['release_year'] = md['release_year'].fillna('').astype('string', errors='raise')
+    md['director'] = md['director'].fillna('').astype('string', errors='raise')
+    md['adult'] = md['adult'].fillna('').apply(
+        lambda x: True if x == 'True' else False)
+    print("Cleaning data successful............... ")
+    return md
 
 
 def add_movie_from_list(list_of_movies):
     try:
         for movie in list_of_movies:
-            mov = Movie()
+            mov = Movies()
             if get_movie_with_id(movie["id"]):
                 # print("Tried to enter duplicate entries:")
                 # print("skipping movie {}.".format(movie["name"]))
@@ -158,13 +241,21 @@ def user_info():
     return
 
 
+def movie_info():
+    movie_id = input('enter id')
+    mov = get_movie_with_id(movie_id)
+    print("  {0:6}          {1:50}   {2:3}  {3:60}    {4}".format("Movie ID", "Movie Name", "avg vote", "Genres", "adult"))
+    print("  {0:6d}        {1:50} {2:3}  {3}      {4}".format(mov.id, mov.name, mov.vote_average, mov.genres, mov.adult))
+    return
+
+
 def user_count():
     print("{} users in database ".format(User.objects.count()))
     return
 
 
 def movie_count():
-    print("{} movies in database ".format(Movie.objects.count()))
+    print("{} movies in database ".format(Movies.objects.count()))
     return
 
 

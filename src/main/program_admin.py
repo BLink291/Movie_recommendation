@@ -24,6 +24,7 @@ def run():
             s.case('users', service.user_count)
             s.case('movies', service.movie_count)
             s.case('ratings', service.rating_count)
+            s.case('minfo', service.movie_info)
 
             s.case('r', db_reset)
             s.case('c', acc.create_admin_account)
@@ -74,29 +75,37 @@ def add_movie():
 
 def load_movies():
     print(' ************   Add Movies  **************** ')
-    if not acc.active_account:
-        error_msg("You must log in first to add movies")
-        return
-    if not acc.active_account.admin:
-        error_msg('Only admin can use this feature ')
-        return
+    # if not acc.active_account:
+    #     error_msg("You must log in first to add movies")
+    #     return
+    # if not acc.active_account.admin:
+    #     error_msg('Only admin can use this feature ')
+    #     return
 
     while True:
         try:
-            file_path = input("Enter full path of movie file")
-            data = pd.read_csv(file_path)
-            data = data.rename(columns={"title": "name", "movieId": "id"})
-            data_list = data.to_dict('records')
-            for x in data_list:
-                x['genres'] = x['genres'].split('|')
-            print('************loading data***************')
+            # file_path = input("Enter full path of movie file")
+            # movies = pd.read_csv(file_path, low_memory=False)
+            # file_path = input("Enter full path of credits file")
+            # credit = pd.read_csv(file_path, low_memory=False)
+            # file_path = input("Enter full path of keywords file")
+            # keywords = pd.read_csv(file_path, low_memory=False)
+            # file_path = input("Enter full path of links file")
+            # links = pd.read_csv(file_path, low_memory=False)
 
+            movies = pd.read_csv('D:\development\dataset\movies_metadata.csv', low_memory=False)
+            credit = pd.read_csv('D:\development\dataset\credits.csv')
+            keywords = pd.read_csv('D:\development\dataset\keywords.csv')
+            links = pd.read_csv('D:\development\dataset\links.csv')
+            cleaned_data = service.data_clean(movies, credit, keywords, links)
+
+            cleaned_data = cleaned_data.rename(columns={"title": "name", "movieId": "id"})
+            data_list = cleaned_data.to_dict('records')
+            print('************loading data***************')
             service.add_movie_from_list(data_list)
             break
         except Exception as e:
             print(" {}  OR press M to go back to menu : ".format(e))
-            if file_path == 'b' or file_path == 'B':
-                break
 
 
 def load_users():
@@ -163,5 +172,5 @@ def db_reset():
         return
 
     db = mongoengine.connect(alias='core', name='mrsp')
-    db.drop_database('mrsp')
+    db.Movies.drop()
 

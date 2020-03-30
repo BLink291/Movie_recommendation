@@ -14,7 +14,7 @@ def run():
 
         with switch(action) as s:
             s.case('c', acc.create_account)
-            s.case('t', trending_movies)
+            s.case('t', top_movies)
             s.case('l', acc.log_into_account)
             s.case('w', recommend)
             s.case('r', rate_movie)
@@ -48,9 +48,11 @@ def show_options():
     print()
 
 
-def trending_movies():
-    print(' ************   Trending movies **************** ')
-    service.trending_movies()
+def top_movies():
+    print(' ************   Top movies **************** ')
+    genres = input('To filter by genres press input genres separated by ","')
+    genres = genres.split(',')
+    service.top_movies(genres)
     return
 
 
@@ -77,7 +79,6 @@ def rate_movie():
     if not movie:
         error_msg("Please enter correct movie ID")
         return
-
     rating = float(input('How much would you rate this movie  (between 0 to 5)? '))
     service.review_movie(acc.active_account.id, movie_id, rating)
     success_msg('Thanks for rating  {}'.format(movie.name))

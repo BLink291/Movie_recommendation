@@ -1,7 +1,9 @@
-from typing import Optional
-from passlib.context import CryptContext
-from src.data.model import User
+from src.account.models import User
 from src.lib.driver import *
+
+from passlib.context import CryptContext
+from typing import Optional
+
 
 active_account: Optional[User] = None
 
