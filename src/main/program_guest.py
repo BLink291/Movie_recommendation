@@ -14,6 +14,7 @@ def run():
 
         with switch(action) as s:
             s.case('c', acc.create_account)
+            s.case('t', trending_movies)
             s.case('l', acc.log_into_account)
             s.case('w', recommend)
             s.case('r', rate_movie)
@@ -36,6 +37,7 @@ def run():
 
 def show_options():
     print('What action would you like to take:')
+    print('[T]rending Movies')
     print('[C]reate an account')
     print('[L]ogin to your account')
     print('[W]atch a new movie')
@@ -44,6 +46,12 @@ def show_options():
     print('[M]ain menu')
     print('e[X]it app')
     print()
+
+
+def trending_movies():
+    print(' ************   Trending movies **************** ')
+    service.trending_movies()
+    return
 
 
 def recommend():

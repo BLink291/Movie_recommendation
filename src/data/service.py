@@ -1,12 +1,11 @@
 from src.account.account import User, find_account_by_user_id
 from src.data.model import Movie, Ratings
-from typing import List
-import bson
 from mongoengine import fields
+import pandas as pd
+import numpy as np
 
 
 def update_document(document, data_dict):
-
     def field_value(field, value):
 
         if field.__class__ in (fields.ListField, fields.SortedListField):
@@ -15,10 +14,10 @@ def update_document(document, data_dict):
                 for item in value
             ]
         if field.__class__ in (
-            fields.EmbeddedDocumentField,
-            fields.GenericEmbeddedDocumentField,
-            fields.ReferenceField,
-            fields.GenericReferenceField
+                fields.EmbeddedDocumentField,
+                fields.GenericEmbeddedDocumentField,
+                fields.ReferenceField,
+                fields.GenericReferenceField
         ):
             return field.document_type(**value)
         else:
@@ -37,16 +36,46 @@ def get_movie_with_id(movie_id) -> Movie:
     return movie
 
 
+def weighted_rating(x, m, c):
+    v = x['vote_count']
+    R = x['avg_vote']
+    # Calculation based on the IMDB formula
+    return (v/(v+m) * R) + (m/(m+v) * c)
+
+
+def trending_movies(genres=None):
+    movies = Movie.objects.all()
+    list = []
+    id_list = []
+    genres_list = []
+
+    df2 = pd.DataFrame(list, columns=['movie_id', 'genres'])
+    for mov in movies:
+        list.append([mov.id, mov.name, mov.vote_avg, mov.vote_count])
+        id_list.append(mov.id)
+        genres_list.append(mov.genres)
+    df = pd.DataFrame(list, columns=['movie_id', 'name', 'avg_vote', 'vote_count'])
+    df2 = pd.DataFrame({'movie_id': id_list, 'genres': genres_list})
+    df = df[df.vote_count > 2]
+    c = df['avg_vote'].mean()
+    m = df['vote_count'].quantile(0.85)
+    print(" c = {} and m = {}".format(c, m))
+    q_movies = df.copy().loc[df['vote_count'] >= m]
+    print(q_movies.shape)
+    q_movies['score'] = q_movies.apply(weighted_rating, args=(c, m), axis=1)
+    q_movies = q_movies.sort_values('score', ascending=False)
+    print(q_movies[['name', 'vote_count', 'avg_vote', 'score']].head(20))
+
+
 def display_all_movies():
     movies = Movie.objects.all()
-    print("  {0:6}          {1:50}   {2:60}".format("Movie ID", "Movie Name", "Genres"))
+    print("  {0:6}          {1:50}   {2:3}  {3:60}".format("Movie ID", "Movie Name", "avg vote", "Genres"))
     i = 0
     for mov in movies:
         i = i+1
         if i is 100:
             i = 193781
-        print("  {0:6d}        {1:50} {2}".format(mov.id, mov.name, mov.genres))
-
+        print("  {0:6d}        {1:50} {2:3}  {3}".format(mov.id, mov.name, mov.vote_avg, mov.genres))
 
 
 def find_ratings_given_by_user(user_id):
@@ -96,8 +125,8 @@ def add_movie_from_list(list_of_movies):
         for movie in list_of_movies:
             mov = Movie()
             if get_movie_with_id(movie["id"]):
-                #print("Tried to enter duplicate entries:")
-                #print("skipping movie {}.".format(movie["name"]))
+                # print("Tried to enter duplicate entries:")
+                # print("skipping movie {}.".format(movie["name"]))
                 continue
             print("Adding movie {}.".format(movie["name"]))
             update_document(mov, movie)
@@ -112,9 +141,9 @@ def add_ratings_from_list(list_of_ratings):
             if not get_movie_with_id(rating["movieId"]):
                 print("skipping.... movie with id {} does not exist.".format(rating["movieId"]))
                 continue
-            #if not find_account_by_user_id(rating["userId"]):
-                #print("skipping.... user with id {} does not exist.".format(rating["userId"]))
-                #continue
+            # if not find_account_by_user_id(rating["userId"]):
+            # print("skipping.... user with id {} does not exist.".format(rating["userId"]))
+            # continue
             print("rating.... user with id {} ".format(rating["userId"]))
             review_movie(rating['userId'], rating["movieId"], rating["rating"])
     except Exception as e:
@@ -129,16 +158,16 @@ def user_info():
     return
 
 
-def user_count() :
+def user_count():
     print("{} users in database ".format(User.objects.count()))
     return
 
 
-def movie_count() :
+def movie_count():
     print("{} movies in database ".format(Movie.objects.count()))
     return
 
 
-def rating_count() :
+def rating_count():
     print("{} ratings in database ".format(Ratings.objects.count()))
     return
