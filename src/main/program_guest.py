@@ -16,7 +16,7 @@ def run():
             s.case('c', acc.create_account)
             s.case('t', top_movies)
             s.case('l', acc.log_into_account)
-            s.case('w', recommend)
+            s.case('w', recommend_movies)
             s.case('r', rate_movie)
             s.case('y', my_movies)
             s.case('m', lambda: 'change_mode')
@@ -33,36 +33,47 @@ def run():
         if s.result == 'change_mode':
             acc.log_out()
             return
+        show_options()
 
 
 def show_options():
     print('What action would you like to take:')
-    print('[T]rending Movies')
-    print('[C]reate an account')
-    print('[L]ogin to your account')
-    print('[W]atch a new movie')
-    print('[R]eview a movie')
-    print('View [y]our watched movies')
-    print('[M]ain menu')
+    print()
+    if not acc.active_account:
+        print('[C]reate an account')
+        print('[L]ogin to your account')
+    else:
+        print('What action would you like to take:')
+        print('[T]op Movies')
+        print('[W]atch a new movie')
+        print('[R]eview a movie')
+        print('View [y]our watched movies')
     print('e[X]it app')
     print()
 
 
 def top_movies():
     print(' ************   Top movies **************** ')
-    genres = input('To filter by genres press input genres separated by ","')
+    genres = input('If you want to  filter movies by genres then input genres separated by "," else press enter')
     genres = genres.split(',')
+    s = " "
+    print(' ************   Top {} Movies **************** '.format(s.join(genres)))
     service.top_movies(genres)
     return
 
 
-def recommend():
+def recommend_movies():
     print(' ************   Recommended movies for you **************** ')
     if not acc.active_account:
         error_msg("You must log in first to review a movie")
         return
     if not service.find_ratings_given_by_user(acc.active_account.id):
-        print('Top Trending movies')
+        print('Top movies suggested for you are:')
+        success_msg('You are not getting personalized recommendation because you are new to our system:')
+        service.top_movies()
+        return
+    service.recommendation(acc.active_account.id)
+
 
 
 def rate_movie():
@@ -100,3 +111,8 @@ def get_option():
 
     action = input(Fore.YELLOW + text + Fore.WHITE)
     return action.strip().lower()
+
+
+
+
+##END##

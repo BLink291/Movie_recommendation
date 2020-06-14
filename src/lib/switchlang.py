@@ -106,3 +106,6 @@ def closed_range(start: int, stop: int, step=1) -> range:
         raise ValueError("Start must be less than stop.")
 
     return range(start, stop + step, step)
+
+
+##END##

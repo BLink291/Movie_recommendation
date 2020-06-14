@@ -42,18 +42,19 @@ def run():
 
         if s.result == 'change_mode':
             return
+        show_commands()
 
 
 def show_commands():
     print('What action would you like to take:')
-    print('[A]dd a movie')
-    print('[lm]Add movies from a csv file')
-    print('[lu]Add users from a csv file')
-    print('[lr]Add ratings from a csv file')
-    print('[S]how all movies')
-    print('[L]og into account')
-    print('[C]reate an account')
-    print("*****[R]eset Database****")
+    print()
+    if not acc.active_account:
+        print('[C]reate an account')
+        print('[L]ogin to your account')
+    else:
+        print('[lm]Add movies from a csv file')
+        print('[S]how all movies')
+        print("*****[R]eset Database****")
     print('[M]ain menu')
     print('e[X]it app')
     print()
@@ -174,3 +175,6 @@ def db_reset():
     db = mongoengine.connect(alias='core', name='mrsp')
     db.Movies.drop()
 
+
+
+##END##

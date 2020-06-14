@@ -40,3 +40,7 @@ class Ratings(mongoengine.Document):
         'db_alias': 'core',
         'collection': 'Ratings'
     }
+
+
+
+##END##
